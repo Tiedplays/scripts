@@ -1,0 +1,295 @@
+-- Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local player = Players.LocalPlayer
+
+-- === CONFIG ===
+local TOGGLE_UNWALK_KEY = Enum.KeyCode.U
+local TOGGLE_GUI_KEY = Enum.KeyCode.RightShift
+
+-- State
+local unwalkEnabled = false
+local guiOpen = true
+local disableAnimations = false
+
+-- GUI Setup
+local gui = Instance.new("ScreenGui")
+gui.Name = "ZenithFansGui"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- === NEON GLOW FRAME (behind main panel) ===
+local glowFrame = Instance.new("Frame")
+glowFrame.Size = UDim2.new(0.1875, 0, 0.1875, 0) -- 25% smaller
+glowFrame.Position = UDim2.new(0.40625, 0, 0.21875, 0)
+glowFrame.BackgroundColor3 = Color3.fromRGB(120, 80, 255) -- neon purple
+glowFrame.BackgroundTransparency = 0.9
+glowFrame.BorderSizePixel = 0
+glowFrame.ZIndex = 0
+glowFrame.Parent = gui
+
+local glowCorner = Instance.new("UICorner")
+glowCorner.CornerRadius = UDim.new(0.2, 0)
+glowCorner.Parent = glowFrame
+
+-- Glow gradient
+local glowGradient = Instance.new("UIGradient")
+glowGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 80, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(80, 40, 200))
+}
+glowGradient.Rotation = 45
+glowGradient.Parent = glowFrame
+
+TweenService:Create(
+    glowGradient,
+    TweenInfo.new(4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+    { Rotation = 495 }
+):Play()
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0.1875, 0, 0.1875, 0) -- 25% smaller
+frame.Position = UDim2.new(0.40625, 0, 0.21875, 0)
+frame.BackgroundColor3 = Color3.fromRGB(15, 13, 20) -- darker middle
+frame.BackgroundTransparency = 0.1
+frame.BorderSizePixel = 0
+frame.ZIndex = 1
+frame.Active = true
+frame.Parent = gui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.2, 0)
+corner.Parent = frame
+
+-- Outer black → purple stroke
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 4
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+stroke.Color = Color3.fromRGB(0, 0, 0)
+stroke.Parent = frame
+
+local strokeGradient = Instance.new("UIGradient")
+strokeGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(0,0,0)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(120,80,255))
+}
+strokeGradient.Rotation = 45
+strokeGradient.Parent = stroke
+
+TweenService:Create(
+	strokeGradient,
+	TweenInfo.new(3.5, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1),
+	{ Rotation = 495 }
+):Play()
+
+-- Inner glass panel
+local glass = Instance.new("Frame")
+glass.Size = UDim2.new(1, -10, 1, -10)
+glass.Position = UDim2.new(0, 5, 0, 5)
+glass.BackgroundColor3 = Color3.fromRGB(25, 23, 35)
+glass.BackgroundTransparency = 0.25
+glass.BorderSizePixel = 0
+glass.ZIndex = 2
+glass.Parent = frame
+
+local glassCorner = Instance.new("UICorner")
+glassCorner.CornerRadius = UDim.new(0.2, 0)
+glassCorner.Parent = glass
+
+-- Shine gradient
+local shine = Instance.new("UIGradient")
+shine.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(255,255,255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(255,255,255))
+}
+shine.Transparency = NumberSequence.new{
+	NumberSequenceKeypoint.new(0, 0.92),
+	NumberSequenceKeypoint.new(0.5, 0.82),
+	NumberSequenceKeypoint.new(1, 0.95)
+}
+shine.Rotation = 45
+shine.Parent = glass
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0.25, 0)
+title.Position = UDim2.new(0, 0, 0, 5)
+title.BackgroundTransparency = 1
+title.Text = "Zenith Fans"
+title.TextColor3 = Color3.fromRGB(120, 80, 255) -- neon purple
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = glass
+
+-- Button
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(0.9, 0, 0.18, 0)
+button.Position = UDim2.new(0.05, 0, 0.55, 0)
+button.BackgroundColor3 = Color3.fromRGB(50, 45, 70)
+button.BackgroundTransparency = 0.1
+button.TextColor3 = Color3.fromRGB(255, 255, 255)
+button.Text = "Unwalk: OFF"
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = glass
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0.35, 0)
+buttonCorner.Parent = button
+
+-- === DRAGGING ===
+local dragging = false
+local dragInput, dragStart, startPos
+local function update(input)
+	if dragging then
+		local delta = input.Position - dragStart
+		frame.Position = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
+		glowFrame.Position = frame.Position
+	end
+end
+
+frame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		dragging = true
+		dragStart = input.Position
+		startPos = frame.Position
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then
+				dragging = false
+			end
+		end)
+	end
+end)
+frame.InputChanged:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseMovement then
+		dragInput = input
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if input == dragInput then
+		update(input)
+	end
+end)
+
+-- === UNWALK LOGIC ===
+local function stopHumanoidAnimations(humanoid)
+	if humanoid then
+		for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+			track:Stop(0)
+		end
+		humanoid.AnimationPlayed:Connect(function(track)
+			if disableAnimations then
+				track:Stop(0)
+			end
+		end)
+	end
+end
+
+local function removeHumanoidAnimations(humanoid)
+	if humanoid and humanoid.Parent then
+		for _, obj in ipairs(humanoid.Parent:GetDescendants()) do
+			if obj:IsA("Animation") then
+				obj:Destroy()
+			end
+		end
+	end
+end
+
+local function processCharacter(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		stopHumanoidAnimations(humanoid)
+		if disableAnimations then
+			removeHumanoidAnimations(humanoid)
+		end
+	end
+end
+
+local function hookPlayer(player)
+	player.CharacterAdded:Connect(processCharacter)
+	if player.Character then
+		processCharacter(player.Character)
+	end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+	hookPlayer(p)
+end
+Players.PlayerAdded:Connect(hookPlayer)
+
+RunService.Heartbeat:Connect(function()
+	if disableAnimations then
+		for _, p in ipairs(Players:GetPlayers()) do
+			local char = p.Character
+			if char then
+				local humanoid = char:FindFirstChildOfClass("Humanoid")
+				if humanoid then
+					for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+						track:Stop(0)
+					end
+				end
+			end
+		end
+	end
+end)
+
+-- Toggle functions
+local function enableUnwalk()
+	disableAnimations = true
+	local char = player.Character
+	if char then
+		local humanoid = char:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			for _, track in ipairs(humanoid:GetPlayingAnimationTracks()) do
+				track:Stop(0)
+			end
+		end
+	end
+end
+
+local function disableUnwalk()
+	disableAnimations = false
+end
+
+local function updateUnwalk()
+	if unwalkEnabled then
+		button.Text = "Unwalk: ON"
+		enableUnwalk()
+	else
+		button.Text = "Unwalk: OFF"
+		disableUnwalk()
+	end
+end
+
+-- Button / key toggle
+button.MouseButton1Click:Connect(function()
+	unwalkEnabled = not unwalkEnabled
+	updateUnwalk()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == TOGGLE_UNWALK_KEY then
+		unwalkEnabled = not unwalkEnabled
+		updateUnwalk()
+	end
+	if input.KeyCode == TOGGLE_GUI_KEY then
+		guiOpen = not guiOpen
+		frame.Visible = guiOpen
+		glowFrame.Visible = guiOpen
+	end
+end)
+
+player.CharacterAdded:Connect(function()
+	unwalkEnabled = false
+	button.Text = "Unwalk: OFF"
+	disableAnimations = false
+end)
