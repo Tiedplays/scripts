@@ -1,0 +1,163 @@
+-- Zenith Fans Duels | Nebula Glass UI (Stable, Rotating Gradient)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Stats = game:GetService("Stats")
+
+local player = Players.LocalPlayer
+local ICON_ID = "rbxassetid://118551308102810" -- replace with your icon asset
+
+-- ScreenGui
+local gui = Instance.new("ScreenGui")
+gui.Name = "ZenithFansDuelsUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Main Bar
+local bar = Instance.new("Frame")
+bar.Size = UDim2.new(0, 620, 0, 62)
+bar.Position = UDim2.new(0.5, -310, 1, -130)
+bar.BackgroundColor3 = Color3.fromRGB(10, 10, 12)
+bar.BackgroundTransparency = 0.25
+bar.BorderSizePixel = 0
+bar.Parent = gui
+
+Instance.new("UICorner", bar).CornerRadius = UDim.new(0, 18)
+
+------------------------------------------------
+-- Nebula Outline (Rotating Gradient)
+------------------------------------------------
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(170, 90, 255)
+stroke.Parent = bar
+
+local strokeGradient = Instance.new("UIGradient")
+strokeGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 90, 255)),
+	ColorSequenceKeypoint.new(0.25, Color3.fromRGB(90, 180, 255)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(200, 90, 255)),
+	ColorSequenceKeypoint.new(0.75, Color3.fromRGB(90, 180, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 90, 255))
+}
+strokeGradient.Rotation = 0
+strokeGradient.Parent = stroke
+
+-- Padding
+local pad = Instance.new("UIPadding")
+pad.PaddingLeft = UDim.new(0, 16)
+pad.PaddingRight = UDim.new(0, 16)
+pad.PaddingTop = UDim.new(0, 8)
+pad.PaddingBottom = UDim.new(0, 8)
+pad.Parent = bar
+
+------------------------------------------------
+-- ICON (Stable, Gradient Fill, Synchronized)
+------------------------------------------------
+local logo = Instance.new("ImageLabel")
+logo.Image = ICON_ID
+logo.Size = UDim2.new(0, 30, 0, 30)
+logo.Position = UDim2.new(0, 0, 0.5, -15) -- pixel-perfect vertical alignment
+logo.BackgroundTransparency = 1
+logo.Parent = bar
+
+-- Gradient Fill inside icon
+local gradientOverlay = Instance.new("UIGradient")
+gradientOverlay.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(210, 170, 255)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 180, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(210, 170, 255))
+}
+gradientOverlay.Rotation = 0
+gradientOverlay.Parent = logo
+
+------------------------------------------------
+-- TEXT (Pixel-Perfect Alignment)
+------------------------------------------------
+local title = Instance.new("TextLabel")
+title.Text = "ZENITH FANS DUELS"
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(210, 170, 255)
+title.BackgroundTransparency = 1
+title.Position = UDim2.new(0, 38, 0, -2)
+title.Size = UDim2.new(0, 260, 0.55, 0)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextYAlignment = Enum.TextYAlignment.Center
+title.Parent = bar
+
+local subtitle = Instance.new("TextLabel")
+subtitle.Text = "by @tiedplays_yt | discord.gg/8YMAN3SnQc"
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextSize = 14
+subtitle.TextColor3 = Color3.fromRGB(200, 200, 210)
+subtitle.BackgroundTransparency = 1
+subtitle.Position = UDim2.new(0, 38, 0.45, 0)
+subtitle.Size = UDim2.new(0, 360, 0.55, 0)
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextYAlignment = Enum.TextYAlignment.Center
+subtitle.Parent = bar
+
+------------------------------------------------
+-- RIGHT STATS
+------------------------------------------------
+local right = Instance.new("Frame")
+right.Size = UDim2.new(0, 230, 1, 0)
+right.Position = UDim2.new(1, -230, 0, 0)
+right.BackgroundTransparency = 1
+right.Parent = bar
+
+local layout = Instance.new("UIListLayout")
+layout.FillDirection = Enum.FillDirection.Vertical
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+layout.VerticalAlignment = Enum.VerticalAlignment.Center
+layout.Padding = UDim.new(0, 2)
+layout.Parent = right
+
+local hint = Instance.new("TextLabel")
+hint.Text = "Hide/Open Settings : T"
+hint.Font = Enum.Font.GothamBold
+hint.TextSize = 14
+hint.TextColor3 = Color3.fromRGB(235, 235, 255)
+hint.BackgroundTransparency = 1
+hint.Size = UDim2.new(1, 0, 0.5, 0)
+hint.TextXAlignment = Enum.TextXAlignment.Right
+hint.Parent = right
+
+local statsLabel = Instance.new("TextLabel")
+statsLabel.Text = "FPS: 0    PING: 0ms"
+statsLabel.Font = Enum.Font.GothamBold
+statsLabel.TextSize = 14
+statsLabel.TextColor3 = Color3.fromRGB(235, 235, 255)
+statsLabel.BackgroundTransparency = 1
+statsLabel.Size = UDim2.new(1, 0, 0.5, 0)
+statsLabel.TextXAlignment = Enum.TextXAlignment.Right
+statsLabel.Parent = right
+
+-- FPS / Ping updater
+local frames = 0
+local last = os.clock()
+
+RunService.RenderStepped:Connect(function()
+	frames += 1
+	if os.clock() - last >= 1 then
+		local ping = math.floor(Stats.Network.ServerStatsItem["Data Ping"]:GetValue())
+		statsLabel.Text = "FPS: " .. frames .. "    PING: " .. ping .. "ms"
+		frames = 0
+		last = os.clock()
+	end
+end)
+
+------------------------------------------------
+-- SYNCHRONIZED GRADIENT ROTATION (Icon + Bar)
+------------------------------------------------
+spawn(function()
+	local angle = 0
+	while true do
+		angle += 1
+		strokeGradient.Rotation = angle
+		gradientOverlay.Rotation = angle
+		RunService.RenderStepped:Wait()
+	end
+end)
