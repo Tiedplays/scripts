@@ -152,7 +152,7 @@ spawn(function()
 end)
 
 -- =====================
--- Toggle UI (CLEAN NEBULA NIGHT SKY)
+-- Toggle UI
 -- =====================
 local toggleUI = Instance.new("Frame")
 toggleUI.Size = UDim2.new(0, 750, 0, 480)
@@ -163,6 +163,12 @@ toggleUI.BackgroundColor3 = Color3.fromRGB(5,5,15)
 toggleUI.BackgroundTransparency = 0.15
 toggleUI.Parent = gui
 Instance.new("UICorner", toggleUI).CornerRadius = UDim.new(0,18)
+
+-- ✅ Purple Outline Added
+local toggleStroke = Instance.new("UIStroke")
+toggleStroke.Thickness = 2
+toggleStroke.Color = Color3.fromRGB(170, 90, 255)
+toggleStroke.Parent = toggleUI
 
 -- Make toggleUI draggable
 do
@@ -293,7 +299,7 @@ for i,name in ipairs(tabNames) do
 	panel.Visible = false
 	panel.Parent = panelContainer
 
-	-- Highlight box around tab
+	-- Highlight box
 	local box = Instance.new("Frame")
 	box.Size = UDim2.new(1,0,1,0)
 	box.Position = UDim2.new(0,0,0,0)
@@ -314,7 +320,7 @@ for i,name in ipairs(tabNames) do
 		ColorSequenceKeypoint.new(1, Color3.fromRGB(170,110,255))
 	}
 
-	-- Animate gradient rotation
+	-- Gradient rotation
 	task.spawn(function()
 		local r = 0
 		while true do
@@ -324,39 +330,34 @@ for i,name in ipairs(tabNames) do
 		end
 	end)
 
+	-- ✅ FIXED TAB CLICK LOGIC
 	btn.MouseButton1Click:Connect(function()
-		-- Fade out old box
+
+		-- Hide old highlight
 		local oldBox = highlightBoxes[activeTabIndex]
-		TweenService:Create(oldBox,TweenInfo.new(0.3),{BackgroundTransparency=1}):Play()
+		if oldBox then
+			local fadeOut = TweenService:Create(oldBox, TweenInfo.new(0.25), {BackgroundTransparency = 1})
+			fadeOut:Play()
+			fadeOut.Completed:Connect(function()
+				oldBox.Visible = false
+			end)
+		end
+
 		tabButtons[activeTabIndex].TextColor3 = Color3.fromRGB(210,170,255)
 		tabButtons[activeTabIndex].TextSize = 14
 
-		-- Activate new tab
 		activeTabIndex = i
-		panel.Visible = true
+
 		for j,p in ipairs(tabPanels) do
-			if j ~= i then p.Visible = false end
+			p.Visible = (j == i)
 		end
 
-		-- Fade in highlight box
+		-- Show new highlight
 		box.Visible = true
 		box.BackgroundTransparency = 1
-		TweenService:Create(box,TweenInfo.new(0.5),{BackgroundTransparency=0.6}):Play()
 
-		-- Animate gradient to fade to white over 1 second
-		local startTime = tick()
-		local duration = 1
-		local connection
-		connection = RunService.RenderStepped:Connect(function()
-			local t = math.clamp((tick()-startTime)/duration,0,1)
-			local color = Color3.fromRGB(
-				170 + t*(255-170),
-				110 + t*(255-110),
-				255
-			)
-			grad.Color = ColorSequence.new{ColorSequenceKeypoint.new(0,color),ColorSequenceKeypoint.new(0.5,color),ColorSequenceKeypoint.new(1,color)}
-			if t >= 1 then connection:Disconnect() end
-		end)
+		local fadeIn = TweenService:Create(box, TweenInfo.new(0.3), {BackgroundTransparency = 0.6})
+		fadeIn:Play()
 
 		btn.TextColor3 = Color3.fromRGB(240,240,255)
 		btn.TextSize = 16
